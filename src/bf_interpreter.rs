@@ -82,7 +82,7 @@ impl BfInterpreter {
             DecDataPtr => {
                 // Decrement the data pointer by one (to point to the next cell to the left).
                 if self.data_ptr == 0 {
-                    return Err("Memory overflow".to_owned());
+                    return Err("Memory underflow".to_owned());
                 }
 
                 self.data_ptr -= 1;
@@ -158,4 +158,56 @@ enum Token {
     ReadByte,
     BeginLoop,
     EndLoop,
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn hello_world() {
+        let program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
+        let mut bf = BfInterpreter::new(program.as_bytes());
+
+        let mut result = vec![];
+        loop {
+            let ret = bf.step().unwrap();
+            match ret {
+                Ret::Finished => break,
+                Ret::Output(o) => {
+                    result.push(o);
+                }
+                _ => {}
+            }
+        }
+        assert_eq!(result, b"Hello World!\n")
+    }
+
+    #[test]
+    fn memory_overflow() {
+        let program = ">".repeat(30_001);
+        let mut bf = BfInterpreter::new(program.as_bytes());
+        loop {
+            match bf.step() {
+                Err(e) => {
+                    assert_eq!(e, "Memory overflow");
+                    break;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn memory_underflow() {
+        let program = "<";
+        let mut bf = BfInterpreter::new(program.as_bytes());
+        match bf.step() {
+            Err(e) => {
+                assert_eq!(e, "Memory underflow");
+            }
+            _ => {}
+        }
+    }
 }
