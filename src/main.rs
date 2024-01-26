@@ -19,7 +19,10 @@ fn main() -> ExitCode {
         repl();
     } else {
         let content = std::fs::read_to_string(arg).unwrap();
-        run_interpreter(content.as_bytes());
+        if let Err(e) = run_interpreter(content.as_bytes()) {
+            eprintln!("ERROR: {}", e);
+            return ExitCode::FAILURE;
+        }
     }
 
     ExitCode::SUCCESS
