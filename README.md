@@ -7,3 +7,9 @@ An interpreter for [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck) programm
 ```
 cargo run bf_source.b
 ```
+
+## REPL
+
+```
+cargo run -- --repl
+```

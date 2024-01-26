@@ -64,9 +64,9 @@ impl BfInterpreter {
         return map;
     }
 
-    pub(crate) fn step(&mut self) -> Ret {
+    pub(crate) fn step(&mut self) -> Result<Ret, String> {
         if self.pc >= self.program.len() {
-            return Ret::Finished;
+            return Ok(Ret::Finished);
         }
 
         let p = self.program[self.pc];
@@ -75,14 +75,16 @@ impl BfInterpreter {
         match p {
             IncDataPtr => {
                 // Increment the data pointer by one (to point to the next cell to the right).
+                if self.data_ptr == self.cells.len() - 1 {
+                    return Err("Memory overflow".to_owned());
+                }
                 self.data_ptr += 1;
                 self.pc += 1;
             }
             DecDataPtr => {
                 // Decrement the data pointer by one (to point to the next cell to the left).
-                assert!(self.data_ptr > 0, "Memory underflow!");
                 if self.data_ptr == 0 {
-                    panic!("Memory underflow!");
+                    return Err("Memory overflow".to_owned());
                 }
 
                 self.data_ptr -= 1;
@@ -102,12 +104,12 @@ impl BfInterpreter {
             WriteByte => {
                 // Output the byte at the data pointer.
                 self.pc += 1;
-                return Ret::Output(self.cells[self.data_ptr]);
+                return Ok(Ret::Output(self.cells[self.data_ptr]));
             }
             ReadByte => {
                 // Accept one byte of input, storing its value in the byte at the data pointer.
                 self.pc += 1;
-                return Ret::Input;
+                return Ok(Ret::Input);
             }
             BeginLoop => {
                 // If the byte at the data pointer is zero, then instead of moving
@@ -132,7 +134,7 @@ impl BfInterpreter {
             }
         }
 
-        Ret::Continue
+        Ok(Ret::Continue)
     }
 
     pub(crate) fn set_input(&mut self, input: u8) {
@@ -140,6 +142,7 @@ impl BfInterpreter {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Ret {
     Input,
     Output(u8),
