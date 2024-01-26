@@ -25,7 +25,7 @@ impl BfInterpreter {
         use Token::*;
         program
             .iter()
-            .map(|b| {
+            .flat_map(|b| {
                 match b {
                     b'>' => Some(IncDataPtr),
                     b'<' => Some(DecDataPtr),
@@ -41,8 +41,6 @@ impl BfInterpreter {
                     }
                 }
             })
-            .filter(|e| e.is_some())
-            .map(|e| e.unwrap())
             .collect::<Vec<_>>()
             .into_boxed_slice()
     }
@@ -61,7 +59,7 @@ impl BfInterpreter {
             }
         }
 
-        return map;
+        map
     }
 
     pub(crate) fn step(&mut self) -> Result<Ret, String> {
