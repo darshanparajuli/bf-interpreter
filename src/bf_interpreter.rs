@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub(crate) struct BfInterpreter {
     pc: usize,
     data_ptr: usize,
@@ -9,16 +10,16 @@ pub(crate) struct BfInterpreter {
 }
 
 impl BfInterpreter {
-    pub(crate) fn new(program: &[u8]) -> Self {
+    pub(crate) fn new(program: &[u8]) -> Result<Self, String> {
         let program = Self::parse_program(program);
-        let matching_parens = Self::find_matching_parens(&program);
-        Self {
+        let matching_parens = Self::find_matching_parens(&program)?;
+        Ok(Self {
             pc: 0,
             data_ptr: 0,
             program,
             cells: vec![0u8; 30_000],
             matching_parens,
-        }
+        })
     }
 
     fn parse_program(program: &[u8]) -> Box<[Token]> {
@@ -45,7 +46,7 @@ impl BfInterpreter {
             .into_boxed_slice()
     }
 
-    fn find_matching_parens(program: &[Token]) -> HashMap<usize, usize> {
+    fn find_matching_parens(program: &[Token]) -> Result<HashMap<usize, usize>, String> {
         let mut map = HashMap::new();
         let mut stack = vec![];
 
@@ -53,13 +54,17 @@ impl BfInterpreter {
             if b == Token::BeginLoop {
                 stack.push((i, b));
             } else if b == Token::EndLoop {
-                let (matching_index, _) = stack.pop().unwrap();
+                let (matching_index, _) = stack.pop().ok_or_else(|| "Missing '['".to_owned())?;
                 map.insert(i, matching_index);
                 map.insert(matching_index, i);
             }
         }
 
-        map
+        if !stack.is_empty() {
+            return Err("Missing ']'".to_owned());
+        }
+
+        Ok(map)
     }
 
     pub(crate) fn step(&mut self) -> Result<Ret, String> {
@@ -168,7 +173,7 @@ mod tests {
     #[test]
     fn hello_world() {
         let program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
-        let mut bf = BfInterpreter::new(program.as_bytes());
+        let mut bf = BfInterpreter::new(program.as_bytes()).unwrap();
 
         let mut result = vec![];
         loop {
@@ -187,7 +192,7 @@ mod tests {
     #[test]
     fn memory_overflow() {
         let program = ">".repeat(30_001);
-        let mut bf = BfInterpreter::new(program.as_bytes());
+        let mut bf = BfInterpreter::new(program.as_bytes()).unwrap();
         loop {
             match bf.step() {
                 Err(e) => {
@@ -202,12 +207,29 @@ mod tests {
     #[test]
     fn memory_underflow() {
         let program = "<";
-        let mut bf = BfInterpreter::new(program.as_bytes());
+        let mut bf = BfInterpreter::new(program.as_bytes()).unwrap();
         match bf.step() {
             Err(e) => {
                 assert_eq!(e, "Memory underflow");
             }
             _ => {}
+        }
+    }
+
+    #[test]
+    fn handle_missing_brackets_error() {
+        let cases = vec!["[", "[][][", "[[[[]]]"];
+        for c in cases {
+            let bf = BfInterpreter::new(c.as_bytes());
+            assert!(bf.is_err());
+            assert_eq!(bf.unwrap_err(), "Missing ']'");
+        }
+
+        let cases = vec!["]", "[][][]]", "[[[[]]]]]"];
+        for c in cases {
+            let bf = BfInterpreter::new(c.as_bytes());
+            assert!(bf.is_err());
+            assert_eq!(bf.unwrap_err(), "Missing '['");
         }
     }
 }

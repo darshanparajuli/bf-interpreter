@@ -29,7 +29,7 @@ fn main() -> ExitCode {
 }
 
 fn run_interpreter(program: &[u8]) -> Result<(), String> {
-    let mut interpreter = BfInterpreter::new(program);
+    let mut interpreter = BfInterpreter::new(program)?;
 
     let mut stdin = std::io::stdin().lock();
     let mut stdout = std::io::stdout().lock();
